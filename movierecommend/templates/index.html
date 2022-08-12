@@ -1,0 +1,1559 @@
+{% load movie_extras %}
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Movie Information Retrieval System</title>
+        <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+        <link rel="stylesheet" href="{% static 'css/bootstrap.css' %}">
+        <link rel="stylesheet" href="{% static 'css/basic.css' %}">
+        <link rel="stylesheet" href="{% static 'css/firstPage.css' %}">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Bellefair&family=Comic+Neue:wght@700&family=Montserrat&display=swap" rel="stylesheet">
+
+        <script type="text/javascript" src="{% static 'js/jquery.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/bootstrap.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/bootstrap.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/jquery-2.1.1.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/jquery.raty.js' %}"></script>
+	</head>
+
+	<body>
+
+<script type="text/javascript">
+
+  var result;
+  var movieId2rating  = {{ movieId2rating }}  // 获得该字典
+
+  $(document).ready(function(){
+    $(".starts").each(function() {
+      $(this).raty({
+        number : 5,
+        score: movieId2rating[parseInt(this.id)],
+        path: '{% static 'img' %}',
+        hints: ['Oof!','Oof.','Meh, it passed the time.','Awesome!','Absolute Must See!'],
+        starHalf:'star-half-big.png',
+        half:true,
+        round:{down:.26,full:.7,up:.9},
+        cancel:true,
+        cancelOff:'cancel-off-big.png',
+        cancelOn:'cancel-on-big.png',
+        click : function(score_, evt) {
+          if (score_ == null) result = -10
+          else if((score_<0.5)) result = 0.5;
+          else if((score_>0.51)&&(score_<1.0)) result = 1.0;
+          else if((score_>1.1)&&(score_<1.5)) result = 1.5;
+          else if((score_>1.5)&&(score_<2)) result = 2.0;
+          else if((score_>2.0)&&(score_<2.5)) result = 2.5;
+          else if((score_>2.5)&&(score_<3.0)) result = 3.0;
+          else if((score_>3.0)&&(score_<3.5)) result = 3.5;
+          else if((score_>3.5)&&(score_<4.0)) result = 4.0;
+          else if((score_>4.0)&&(score_<4.5)) result = 4.5;
+          else  result = 5.0;
+          $("#rating").val(result.toFixed(1));
+          if (typeof {{ user.id }} === 'undefined')
+            alert('Please log in or sign up first!');
+          else if (result < 0)
+              $.ajax({
+              type : "GET",
+              url: '/delete/?userId=' + {{ user.id}} + '&imdbId=' + this.id,
+              success: function (r) {
+                // console.log('success: delete')
+              },
+              failure : function (r) {
+                alert('failure: delete')
+              }
+            });
+          else
+            $.ajax({
+              type : "GET",
+              url: '/insert/?userId=' + {{ user.id}} + '&rating=' + result + '&imdbId=' + this.id,
+              success: function (r) {
+                // console.log(r)
+              },
+              failure : function (r) {
+                alert('failure')
+              }
+            });
+        }
+      });
+    });
+
+    $(".starts").click(function(){
+      $("#imdbId").val(this.id);
+    });
+
+    $("#recommend2").click(function () {
+        $.ajax({
+            beforeSend:function(){
+                $("#loading").html("<img class='text-center' src='/static/img/loader.gif'>"); //在请求后台数据之前显示loading图标
+            },
+            success:function(data){  //data为后台返回的数据
+                //console.log(data);
+                //alert("ajax请求成功!");
+                //$("#loading").empty();
+            },
+            complete: function () {
+                //alert("complete");
+                //$("#loading").empty();
+            },
+            error:function () {
+                alert("请求数据失败")
+            }
+        });
+    });
+
+    $("#fuzzy_search").click(function () {
+      $("#keyword").val({{ user.keyword}});
+    });
+  });
+
+</script>
+
+<div id="header-nav" class="flex-center">
+  <div class="container_">
+
+    <div class="navbar-header">
+      <a href="index.html" class="pull-left visible-md visible-lg"></a>
+      <div class="navbar-brand">
+        <a href="\"><h1>Movie Information Retrieval System</h1></a>
+      </div>
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#collapsable-nav" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div><!-- navbar-header -->
+
+    <div id="collapsable-nav" class="collapse navbar-collapse">
+       <ul id="nav-list" class="nav navbar-nav navbar-right">
+
+        {% if user.is_authenticated %}
+          <!-- search bar -->
+          <li>
+            <form action="/users/fuzzy_search/" method="get">
+              <input type="text" name="keyword" id="keyword" placeholder="Title, IMDB Id...">
+            </form>
+          </li>
+
+          <!-- check rating history -->
+          <li>
+            <form action="/users/showmessage/" method="post">
+              {% csrf_token %}
+              <button class="btn btn-default" id="showmessage">{{ user.username }}'s RATING HISTORY</button>
+            </form>
+          </li>
+
+          <!-- log out button -->
+          <li>
+            <button class="btn btn-default" id="log-out"><a href="{% url 'logout' %}?next={{ request.path }}">LOG OUT</a></button>
+          </li>
+
+        {% else %}
+          <!-- log in button -->
+          <li>
+            <button class="btn btn-default" id="log-in"><a href="{% url 'login' %}?next={{ request.path }}">LOG IN</a></button>
+          </li>
+
+          <!-- sign up button -->
+          <li>
+            <button class="btn btn-default" id="sign-up"><a href="{% url 'users:register' %}">SIGN UP</a></button>
+          </li>
+
+        {% endif %}
+
+      </ul><!-- #nav-list -->
+    </div><!-- .collapse .navbar-collapse -->
+
+
+  </div><!-- .container_ -->
+</div><!-- #header-nav .flex-center -->
+
+
+
+<br/>
+
+<iframe id="id_iframe" name="nm_iframe" style="display:none;"></iframe>
+
+    <div>
+      <hr/>
+      <ul class="nav nav-tabs nav-justified" id="index">
+        <li class="active"><a href="#tab0" data-toggle="tab">Action</a></li>
+        <li><a href="#tab1" data-toggle="tab">Thriller</a></li>
+        <li><a href="#tab2" data-toggle="tab">Comedy</a></li>
+        <li><a href="#tab3" data-toggle="tab">Animation</a></li>
+        <li><a href="#tab4" data-toggle="tab">SciFi</a></li>
+        <li><a href="#tab5" data-toggle="tab">Crime</a></li>
+        <li><a href="#tab6" data-toggle="tab">Romance</a></li>
+        <li><a href="#tab7" data-toggle="tab">Drama</a></li>
+      </ul>
+      <hr/>
+    </div>
+
+
+{#动作片#}
+  <div class="tab-content" id="my-content">
+      <div class="tab-pane fade in active" id="tab0">
+        <ul class="figures_lists">
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film"  target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/103776.jpg' %}" alt="Batman Returns">
+            </a>
+            <strong class="figure_title">
+                <a _boss="film"  href="{{ '103776'|href }}" target="_blank" title="Batman Returns">{{ 'Batman Returns'|truncatechars:max_char_num }}</a>
+                <div class="evaluate">
+                    <div class="starts" id="103776"></div>
+                </div>
+            </strong>
+          </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film"  target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/434409.jpg' %}" alt="V for Vendetta">
+            </a>
+            <strong class="figure_title">
+                <a _boss="film"  href="{{ '434409'|href }}" target="_blank" title="V for Vendetta">{{ 'V for Vendetta'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "434409"></div></div>
+            </strong>
+          </li>
+
+
+         <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/77869.jpg' %}" alt="The Lord of the Rings">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '77869'|href }}" target="_blank" title="The Lord of the Rings">{{ 'The Lord of the Rings'|truncatechars:max_char_num }}</a>
+                        <div class="starts" id = "77869"></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/145487.jpg' %}" alt="Spider-Man">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '145487'|href }}" target="_blank" title="Spider-Man">{{ 'Spider-Man'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "145487"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/371746.jpg' %}" alt="Iron Man">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '371746'|href }}" target="_blank" title="Iron Man">{{ 'Iron Man'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "371746"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/499549.jpg' %}" alt="Avatar">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '499549'|href }}" target="_blank" title="Avatar">{{ 'Avatar'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "499549"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/113189.jpg' %}" alt="GoldenEye">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '113189'|href }}" target="_blank" title="GoldenEye">{{ 'GoldenEye'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "113189"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/4600952.jpg' %}" alt="Zashchitniki">
+            </a>
+            <strong class="figure_title">
+              <a _boss="film"  href="{{ '4600952'|href }}" target="_blank" title="The Gaudian">{{ 'The Gaudian'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "4600952"></div></div>
+            </strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/5481184.jpg' %}" alt="Feng shen chuan qi">
+            </a>
+            <strong class="figure_title">
+              <a _boss="film"  href="{{ '5481184'|href }}" target="_blank" title="Feng shen chuan qi">{{ 'Feng shen chuan qi'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "5481184"></div></div>
+            </strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/4324274.jpg' %}" alt="Batman vs. Robin">
+            </a>
+            <strong class="figure_title">
+              <a _boss="film"  href="{{ '4324274'|href }}" target="_blank" title="Batman vs. Robin">{{ 'Batman vs. Robin'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "4324274"></div></div>
+            </strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/3672840.jpg' %}" alt="Dragon Blade">
+            </a>
+            <strong class="figure_title">
+              <a _boss="film"  href="{{ '3672840'|href }}" target="_blank" title="Tian jiang xiong shi">{{ 'Tian jiang xiong shi'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "3672840"></div></div>
+            </strong>
+          </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/3540136.jpg' %}" alt="Wolf Warrior">
+            </a>
+            <strong class="figure_title">
+              <a _boss="film"  href="{{ '3540136'|href }}" target="_blank" title="Zhan lang">{{ 'Zhan lang'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "3540136"></div></div>
+            </strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/1229238.jpg' %}" alt="Mission: Impossible">
+            </a>
+            <strong class="figure_title">
+              <a _boss="film"  href="{{ '1229238'|href }}" target="_blank" title="Mission: Impossible - Ghost Protocol">{{ 'Mission: Impossible - Ghost Protocol'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "1229238"></div></div>
+            </strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/105859.jpg' %}" alt="Dragon Inn">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '105859'|href }}" target="_blank" title="San lung moon hak chan">{{ 'San lung moon hak chan'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "105859"></div></div>
+    				</strong>
+			    </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2186715.jpg' %}" alt="Cold War">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2186715'|href }}" target="_blank" title="Hon zin">{{ 'Hon zin'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2186715"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1298650.jpg' %}" alt="Pirates of the Caribbean">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1298650'|href }}" target="_blank" title="Pirates of the Caribbean: On Stranger Tides">{{ 'Pirates of the Caribbean: On Stranger Tides'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1298650"></div></div>
+    				</strong>
+          </li>
+        </ul>
+      </div>
+
+{#恐怖片#}
+       <div class="tab-pane fade" id="tab1">
+        <ul class="figures_lists">
+          <li class="list_item" data-trigger-class="list_item_hover">
+            <a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+              <img src="{% static 'img/poster/81505.jpg' %}" alt="闪灵">
+            </a>
+            <strong class="figure_title">
+                <a _boss="film"  href="{{ '81505'|href }}" target="_blank" title="The Shining">{{ 'The Shining'|truncatechars:max_char_num }}</a>
+                <div class="evaluate"><div class="starts" id = "81505"></div></div>
+            </strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/63350.jpg' %}" alt="活死人之夜">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '63350'|href }}" target="_blank" title="Night of the Living Dead">{{ 'Night of the Living Dead'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "63350"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1187064.jpg' %}" alt="恐怖游轮">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1187064'|href }}" target="_blank" title="Triangle">{{ 'Triangle'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1187064"></div></div>
+    				</strong>
+          </li>
+
+           <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1148204.jpg' %}" alt="孤儿怨">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1148204'|href }}" target="_blank" title="Orphan">{{ 'Orphan'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1148204"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/309698.jpg' %}" alt="致命ID">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '309698'|href }}" target="_blank" title="Identity">{{ 'Identity'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "309698"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1457767.jpg' %}" alt="招魂">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1457767'|href }}" target="_blank" title="The Conjuring">{{ 'The Conjuring'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1457767"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/384537.jpg' %}" alt="寂静岭">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '384537'|href }}" target="_blank" title="Silent Hill">{{ 'Silent Hill'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "384537"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/102926.jpg' %}" alt="沉默的羔羊">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '102926'|href }}" target="_blank" title="The Silence of the Lambs">{{ 'The Silence of the Lambs'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "102926"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1259521.jpg' %}" alt="林中小屋">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1259521'|href }}" target="_blank" title="The Cabin in the Woods">{{ 'The Cabin in the Woods'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1259521"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/195714.jpg' %}" alt="死神来了">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '195714'|href }}" target="_blank" title="Final Destination">{{ 'Final Destination'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "195714"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/364385.jpg' %}" alt="咒怨">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '364385'|href }}" target="_blank" title="Ju-on">{{ 'Ju-on'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "364385"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/120804.jpg' %}" alt="生化危机I">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '120804'|href }}" target="_blank" title="Resident Evil">{{ 'Resident Evil'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "120804"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/212985.jpg' %}" alt="汉尼拔">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '212985'|href }}" target="_blank" title="Hannibal">{{ 'Hannibal'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "212985"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2973516.jpg' %}" alt="杀人漫画">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2973516'|href }}" target="_blank" title="Deo web-toon: Ye-go sal-in">{{ 'Deo web-toon: Ye-go sal-in'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2973516"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2281159.jpg' %}" alt="神秘感染">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2281159'|href }}" target="_blank" title="Contracted">{{ 'Contracted'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2281159"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/89371.jpg' %}" alt="僵尸先生">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '89371'|href }}" target="_blank" title="Geung see sin sang">{{ 'Geung see sin sang'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "89371"></div></div>
+    				</strong>
+          </li>
+
+        </ul>
+      </div>
+
+{# 喜剧片#}
+      <div class="tab-pane fade" id="tab2">
+        <ul class="figures_lists">
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/5157018.jpg' %}" alt="坏蛋必须死">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '5157018'|href }}" target="_blank" title="Huai dan bi xu si">{{ 'Huai dan bi xu si'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "5157018"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2414370.jpg' %}" alt="痞子英雄">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2414370'|href }}" target="_blank" title="Pi zi ying xiong shou bu qu: Quan mian kai zhan">{{ 'Pi zi ying xiong shou bu qu: Quan mian kai zhan'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2414370"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1372692.jpg' %}" alt="功夫厨神">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1372692'|href }}" target="_blank" title="Gong fu chu shen">{{ 'Gong fu chu shen'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1372692"></div></div>
+    				</strong>
+		  </li>
+
+                   <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/5290882.jpg' %}" alt="唐人街探案">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '5290882'|href }}" target="_blank" title="Tang ren jie tan an">{{ 'Tang ren jie tan an'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "5290882"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/3863552.jpg' %}" alt="小萝莉的猴神大叔">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '3863552'|href }}" target="_blank" title="Bajrangi Bhaijaan">{{ 'Bajrangi Bhaijaan'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "3863552"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1187043.jpg' %}" alt="三傻大闹宝莱坞">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1187043'|href }}" target="_blank" title="3 Idiots">{{ '3 Idiots'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1187043"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/5061814.jpg' %}" alt="夏洛特烦恼">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '5061814'|href }}" target="_blank" title="Xia Luo te fan nao">{{ 'Xia Luo te fan nao'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "5061814"></div></div>
+    				</strong>
+		  </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1675434.jpg' %}" alt="触不可及">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1675434'|href }}" target="_blank" title="Intouchables">{{ 'Intouchables'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1675434"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/188766.jpg' %}" alt="喜剧之王">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '188766'|href }}" target="_blank" title="Hei kek ji wong">{{ 'Hei kek ji wong'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "188766"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2459022.jpg' %}" alt="人在囧途之泰囧">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2459022'|href }}" target="_blank" title="Ren zai jiong tu: Tai jiong">{{ 'Ren zai jiong tu: Tai jiong'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2459022"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/373074.jpg' %}" alt="功夫">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '373074'|href }}" target="_blank" title="Kung fu">{{ 'Kung fu'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "373074"></div></div>
+    				</strong>
+		  </li>
+
+           <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1109624.jpg' %}" alt="帕丁顿熊">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1109624'|href }}" target="_blank" title="Paddington">{{ 'Paddington'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1109624"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2245084.jpg' %}" alt="超能陆战队">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2245084'|href }}" target="_blank" title="Big Hero 6">{{ 'Big Hero 6'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2245084"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/362227.jpg' %}" alt="幸福终点站">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '362227'|href }}" target="_blank" title="The Terminal">{{ 'The Terminal'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "362227"></div></div>
+    				</strong>
+		  </li>
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/118799.jpg' %}" alt="美丽人生">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '118799'|href }}" target="_blank" title="La vita è bella">{{ 'La vita è bella'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "118799"></div></div>
+    				</strong>
+           </li>
+
+             <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/356910.jpg' %}" alt="史密斯夫妇">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '356910'|href }}" target="_blank" title="Mr. & Mrs. Smith">{{ 'Mr. & Mrs. Smith'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "356910"></div></div>
+    				</strong>
+           </li>
+        </ul>
+      </div>
+
+      <!--动画片-->
+<div class="tab-pane fade" id="tab3">
+        <ul class="figures_lists">
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/114709.jpg' %}" alt="玩具总动员">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '114709'|href }}" target="_blank" title="Toy Story">{{ 'Toy Story'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "114709"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/113198.jpg' %}" alt="高飞电影">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '113198'|href }}" target="_blank" title="A Goofy Movie">{{ 'A Goofy Movie'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "113198"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/110357.jpg' %}" alt="狮子王">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '110357'|href }}" target="_blank" title="The Lion King">{{ 'The Lion King'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "110357"></div></div>
+    				</strong>
+		  </li>
+
+                   <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/29583.jpg' %}" alt="白雪公主和七个小矮人">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '29583'|href }}" target="_blank" title="Snow White and the Seven Dwarfs">{{ 'Snow White and the Seven Dwarfs'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "29583"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/4644382.jpg' %}" alt="西游记之大圣归来">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '4644382'|href }}" target="_blank" title="Xi you ji zhi da sheng gui lai">{{ 'Xi you ji zhi da sheng gui lai'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "4644382"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/120794.jpg' %}" alt="埃及王子">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '120794'|href }}" target="_blank" title="The Prince of Egypt">{{ 'The Prince of Egypt'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "120794"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/129167.jpg' %}" alt="铁巨人">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '129167'|href }}" target="_blank" title="The Iron Giant">{{ 'The Iron Giant'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "129167"></div></div>
+    				</strong>
+          </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/245429.jpg' %}" alt="千与千寻">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '245429'|href }}" target="_blank" title="Sen to Chihiro no kamikakushi">{{ 'Sen to Chihiro no kamikakushi'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "245429"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/126029.jpg' %}" alt="怪物史莱克">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '126029'|href }}" target="_blank" title="Shrek">{{ 'Shrek'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "126029"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" href="" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/441773.jpg' %}" alt="功夫熊猫">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '441773'|href }}" target="_blank" title="Kung Fu Panda">{{ 'Kung Fu Panda'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "441773"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/892782.jpg' %}" alt="大战外星人">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '892782'|href }}" target="_blank" title="Monsters vs. Aliens">{{ 'Monsters vs. Aliens'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "892782"></div></div>
+    				</strong>
+          </li>
+
+           <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1323594.jpg' %}" alt="神偷奶爸">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1323594'|href }}" target="_blank" title="Despicable Me">{{ 'Despicable Me'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1323594"></div></div>
+    				</strong>
+          </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/4692656.jpg' %}" alt="汤姆和杰瑞">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '4692656'|href }}" target="_blank" title="Tom and Jerry: Spy Quest">{{ 'Tom and Jerry: Spy Quest'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "4692656"></div></div>
+    				</strong>
+          </li>
+
+         <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/3919322.jpg' %}" alt="史酷比">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '3919322'|href }}" target="_blank" title="Scooby-Doo! Frankencreepy">{{ 'Scooby-Doo! Frankencreepy'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "3919322"></div></div>
+    				</strong>
+          </li>
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/3781476.jpg' %}" alt="捉妖记">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '3781476'|href }}" target="_blank" title="Zhuo yao ji">{{ 'Zhuo yao ji'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "3781476"></div></div>
+    				</strong>
+           </li>
+
+             <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film"  target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/266543.jpg' %}" alt="海底总动员">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '266543'|href }}" target="_blank" title="Finding Nemo">{{ 'Finding Nemo'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "266543"></div></div>
+    				</strong>
+           </li>
+
+        </ul>
+      </div>
+
+{# 科幻#}
+
+      <div class="tab-pane fade" id="tab4">
+        <ul class="figures_lists">
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1375666.jpg' %}" alt="盗梦空间">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1375666'|href }}" target="_blank" title="Inception">{{ "Inception"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1375666"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/816692.jpg' %}" alt="星际穿越">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '816692'|href }}" target="_blank" title="Interstellar">{{ "Interstellar"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "816692"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/910970.jpg' %}" alt="机器人总动员">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '910970'|href }}" target="_blank" title="WALL·E">{{ "WALL·E"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "910970"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2872732.jpg' %}" alt="超体">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2872732'|href }}" target="_blank" title="Lucy">{{ "Lucy"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2872732"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/133093.jpg' %}" alt="黑客帝国">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '133093'|href }}" target="_blank" title="The Matrix">{{ "The Matrix"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "133093"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/289879.jpg' %}" alt="蝴蝶效应">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '289879'|href }}" target="_blank" title="The Butterfly Effect">{{ "The Butterfly Effect"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "289879"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/182789.jpg' %}" alt="机器管家">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '182789'|href }}" target="_blank" title="Bicentennial Man">{{ "Bicentennial Man"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "182789"></div></div>
+    				</strong>
+		  </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2866360.jpg' %}" alt="彗星来的那一夜">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2866360'|href }}" target="_blank" title="Coherence">{{ "Coherence"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2866360"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/945513.jpg' %}" alt="源代码">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '945513'|href }}" target="_blank" title="Source Code">{{ "Source Code"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "945513"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/76759.jpg' %}" alt="星球大战">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '76759'|href }}" target="_blank" title="Star Wars: Episode IV - A New Hope">{{ "Star Wars: Episode IV - A New Hope"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "76759"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1877832.jpg' %}" alt="X战警：逆转未来">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1877832'|href }}" target="_blank" title="X-Men: Days of Future Past">{{ "X-Men: Days of Future Past"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1877832"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1631867.jpg' %}" alt="明日边缘">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1631867'|href }}" target="_blank" title="Edge of Tomorrow">{{ "Edge of Tomorrow"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1631867"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/848228.jpg' %}" alt="复仇者联盟">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '848228'|href }}" target="_blank" title="The Avengers">{{ "The Avengers"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "848228"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1454468.jpg' %}" alt="地心引力">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1454468'|href }}" target="_blank" title="Gravity">{{ "Gravity"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1454468"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1190080.jpg' %}" alt="2012">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1190080'|href }}" target="_blank" title="2012">{{ "2012"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1190080"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1305797.jpg' %}" alt="宝莱坞机器人之恋">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1305797'|href }}" target="_blank" title="Enthiran">{{ "Enthiran"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1305797"></div></div>
+    				</strong>
+		  </li>
+        </ul>
+      </div>
+
+
+
+{#      犯罪#}
+     <div class="tab-pane fade" id="tab5">
+        <ul class="figures_lists">
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/338564.jpg' %}" alt="无间道">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '338564'|href }}" target="_blank" title="Infernal Affairs">{{ "Infernal Affairs"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "338564"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/114369.jpg' %}" alt="七宗罪">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '114369'|href }}" target="_blank" title="Se7en">{{ "Se7en"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "114369"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/111161.jpg' %}" alt="肖申克的救赎">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '111161'|href }}" target="_blank" title="The Shawshank Redemption">{{ "The Shawshank Redemption"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "111161"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2165735.jpg' %}" alt="毒战">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2165735'|href }}" target="_blank" title="Du zhan">{{ "Du zhan"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2165735"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2267998.jpg' %}" alt="消失的爱人">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2267998'|href }}" target="_blank" title="Gone Girl">{{ "Gone Girl"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2267998"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2990738.jpg' %}" alt="恐怖直播">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2990738'|href }}" target="_blank" title="Deu tae-ro ra-i-beu">{{ "Deu tae-ro ra-i-beu"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2990738"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/92263.jpg' %}" alt="英雄本色">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '92263'|href }}" target="_blank" title="A Better Tomorrow">{{ "A Better Tomorrow"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "92263"></div></div>
+    				</strong>
+		  </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/209144.jpg' %}" alt="记忆碎片">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '209144'|href }}" target="_blank" title="Memento">{{ "Memento"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "209144"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/216165.jpg' %}" alt="暗战">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '216165'|href }}" target="_blank" title="Am zin">{{ "Am zin"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "216165"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1067920.jpg' %}" alt="名侦探柯南：世纪末的魔术师">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1067920'|href }}" target="_blank" title="Meitantei Conan: Seiki matsu no majutsushi">{{ "Meitantei Conan: Seiki matsu no majutsushi"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1067920"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1160629.jpg' %}" alt="嫌疑人x的献身">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1160629'|href }}" target="_blank" title="Yôgisha X no kenshin">{{ "Yôgisha X no kenshin"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1160629"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/439884.jpg' %}" alt="天下无贼">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '439884'|href }}" target="_blank" title="Tian xia wu zei">{{ "Tian xia wu zei"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "439884"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/137494.jpg' %}" alt="偷天陷阱">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ 137494|href }}" target="_blank" title="Entrapment">{{ "Entrapment"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "137494"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/110413.jpg' %}" alt="这个杀手不太冷">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '110413'|href }}" target="_blank" title="Léon">{{ "Léon"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "110413"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/4701702.jpg' %}" alt="老炮儿">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '4701702'|href }}" target="_blank" title="Lao pao er">{{ "Lao pao er"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "4701702"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2820852.jpg' %}" alt="速度与激情7">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2820852'|href }}" target="_blank" title="Furious 7">{{ "Furious 7"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2820852"></div></div>
+    				</strong>
+		  </li>
+        </ul>
+      </div>
+
+<!--爱情片-->
+     <div class="tab-pane fade" id="tab6">
+        <ul class="figures_lists">
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/211915.jpg' %}" alt="天使爱美丽">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '211915'|href }}" target="_blank" title="Le fabuleux destin d'Amélie Poulain">{{ "Le fabuleux destin d'Amélie Poulain"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "211915"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/109830.jpg' %}" alt="阿甘正传">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '109830'|href }}" target="_blank" title="Forrest Gump">{{ 'Forrest Gump'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "109830"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/120338.jpg' %}" alt="泰坦尼克号">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '120338'|href }}" target="_blank" title="Titanic">{{ 'Titanic'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "120338"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/106332.jpg' %}" alt="霸王别姬">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '106332'|href }}" target="_blank" title="Farewell My Concubine">{{ 'Farewell My Concubine'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "106332"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/99487.jpg' %}" alt="剪刀手爱德华">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '99487'|href }}" target="_blank" title="Edward Scissorhands">{{ 'Edward Scissorhands'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "99487"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2036416.jpg' %}" alt="那些年，我们一起追的女孩">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2036416'|href }}" target="_blank" title="Na xie nian, wo men yi qi zhui de nv hai">{{ 'Na xie nian, wo men yi qi zhui de nv hai'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2036416"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/3043630.jpg' %}" alt="小时代">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '3043630'|href }}" target="_blank" title="Tiny Times 1.0">{{ 'Tiny Times 1.0'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "3043630"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1055300.jpg' %}" alt="画皮">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1055300'|href }}" target="_blank" title="Hua pi">{{ 'Hua pi'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1055300"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/808357.jpg' %}" alt="色戒">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '808357'|href }}" target="_blank" title="Lust, Caution">{{ 'Lust, Caution'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "808357"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1010048.jpg' %}" alt="贫民窟的百万富翁">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1010048'|href }}" target="_blank" title="Slumdog Millionaire">{{ 'Slumdog Millionaire'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1010048"></div></div>
+    				</strong>
+		  </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/93978.jpg' %}" alt="倩女幽魂">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '93978'|href }}" target="_blank" title="Sien nui yau wan">{{ 'Sien nui yau wan'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "93978"></div></div>
+    				</strong>
+		  </li>
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/817177.jpg' %}" alt="怦然心动">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '817177'|href }}" target="_blank" title="Flipped">{{ 'Flipped'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "817177"></div></div>
+    				</strong>
+		   </li>
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1194664.jpg' %}" alt="恋空">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1194664'|href }}" target="_blank" title="Koizora">{{ 'Koizora'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1194664"></div></div>
+    				</strong>
+		   </li>
+
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1554523.jpg' %}" alt="山楂树之恋">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1554523'|href }}" target="_blank" title="Shan zha shu zhi lian">{{ 'Shan zha shu zhi lian'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1554523"></div></div>
+    				</strong>
+		    </li>
+
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1859438.jpg' %}" alt="初恋这件小事">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1859438'|href }}" target="_blank" title="Sing lek lek tee reak wa rak">{{ 'Sing lek lek tee reak wa rak'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1859438"></div></div>
+    				</strong>
+		    </li>
+
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/428870.jpg' %}" alt="我脑中的橡皮擦">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '428870'|href }}" target="_blank" title="A Moment to Remember">{{ 'A Moment to Remember'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "428870"></div></div>
+    				</strong>
+		    </li>
+
+
+        </ul>
+      </div>
+{#      剧情片#}
+      <div class="tab-pane fade" id="tab7">
+        <ul class="figures_lists">
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/458352.jpg' %}" alt="穿普拉达的女王">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '458352'|href }}" target="_blank" title="The Devil Wears Prada">{{ 'The Devil Wears Prada'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "458352"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/454876.jpg' %}" alt="少年派的奇幻漂流">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '454876'|href }}" target="_blank" title="Life of Pi">{{ 'Life of Pi'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "454876"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1028532.jpg' %}" alt="忠犬八公的故事">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1028532'|href }}" target="_blank" title="Hachi: A Dog's Tale">{{ "Hachi: A Dog's Tale"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1028532"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/120382.jpg' %}" alt="楚门的世界">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '120382'|href }}" target="_blank" title="The Truman Show">{{ 'The Truman Show'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "120382"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1410063.jpg' %}" alt="金陵十三钗 ">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1410063'|href }}" target="_blank" title="Jin ling shi san chai">{{ 'Jin ling shi san chai'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1410063"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/110081.jpg' %}" alt="活着">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '110081'|href }}" target="_blank" title="To Live">{{ "To Live"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "110081"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/73486.jpg' %}" alt="飞越疯人院">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '73486'|href }}" target="_blank" title="One Flew Over the Cuckoo's Nest">{{ "One Flew Over the Cuckoo's Nest"|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "73486"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1285016.jpg' %}" alt="社交网络">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1285016'|href }}"target="_blank" title="The Social Network">{{ 'The Social Network'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1285016"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1670345.jpg' %}" alt="惊天魔盗团">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1670345'|href }}"target="_blank" title="Now You See Me">{{ 'Now You See Me'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1670345"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/167404.jpg' %}" alt="第六感">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '167404'|href }}" target="_blank" title="The Sixth Sense">{{ 'The Sixth Sense'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "167404"></div></div>
+    				</strong>
+		  </li>
+
+            <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/166924.jpg' %}" alt="穆赫兰道">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '166924'|href }}" target="_blank" title="Mulholland Dr.">{{ 'Mulholland Dr.'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "166924"></div></div>
+    				</strong>
+		  </li>
+
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/405094.jpg' %}" alt="窃听风暴">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '405094'|href }}" target="_blank" title="The Lives of Others">{{ 'The Lives of Others'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "405094"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/2582802.jpg' %}" alt="爆裂鼓手">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '2582802'|href }}" target="_blank" title="Whiplash">{{ 'Whiplash'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "2582802"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1393746.jpg' %}" alt="唐山大地震">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1393746'|href }}" target="_blank" title="Tang shan da di zhen">{{ 'Tang shan da di zhen'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1393746"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/1707386.jpg' %}" alt="悲惨世界">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '1707386'|href }}" target="_blank" title="Les Misérables">{{ 'Les Misérables'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "1707386"></div></div>
+    				</strong>
+		  </li>
+
+          <li class="list_item" data-trigger-class="list_item_hover">
+    				<a _boss="film" target="_blank" class="figure" tabindex="-1">
+    					<img src="{% static 'img/poster/480249.jpg' %}" alt="我是传奇">
+    				</a>
+    				<strong class="figure_title">
+    					<a _boss="film"  href="{{ '480249'|href }}" target="_blank" title="I Am Legend">{{ 'I Am Legend'|truncatechars:max_char_num }}</a>
+                        <div class="evaluate"><div class="starts" id = "480249"></div></div>
+    				</strong>
+		  </li>
+
+
+        </ul>
+      </div>
+</div>
+
+  {% if user.is_authenticated %}
+    <div class="text-center">
+        <form action="users/recommend2/" method="post">
+            {% csrf_token %}
+            <button class="text-center" id="recommend2">GET RECOMMENDATION!</button>
+        </form>
+        <div id="loading"></div>
+    </div>
+  {% endif %}
+
+
+<iframe id="id_iframe" name="nm_iframe" style="display:none;"></iframe>
+<br/>
+<br/>
+
+
+	</body>
+</html>

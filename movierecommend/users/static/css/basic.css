@@ -1,0 +1,159 @@
+body {
+  background-color: #202020;
+}
+
+#header-nav {
+  border-radius: 0;
+  /*border-bottom: 1px solid #fff;*/
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background-color: #272727;
+}
+
+.navbar-brand {
+  padding-top: 25px;
+  padding-bottom: 25px;
+}
+.navbar-brand h1 { /* "MOVIE INFORMATION RETRIEVAL SYSTEM" */
+  font-family: 'Montserrat', sans-serif;
+  color: #fff;
+  font-size: 1.5em;
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: .75;
+}
+.navbar-brand a:hover, .navbar-brand a:focus {
+  text-decoration: none;
+}
+
+/* collapsed navbar-header */
+.navbar-header button.navbar-toggle, .navbar-header .icon-bar {
+  border: 2px solid #ddd;
+}
+
+#nav-list {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+#nav-list a {
+  text-decoration: none;
+  color: #fff;
+  font-size: 20px;
+  font-family: 'Bellefair', serif;
+}
+#nav-list a:hover {
+  background: #383838;
+}
+
+#nav-list form, #nav-list button {
+  color: #fff;
+  font-size: 20px;
+  font-family: 'Bellefair', serif;
+}
+
+#log-out, #showmessage, #log-in, #sign-up {
+  background-color: #272727;
+  border: none;
+  height: 50px;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+
+#log-out:hover,#showmessage:hover, #log-in:hover, #sign-up:hover {
+  background-color: #383838;
+  border-radius: 10px;
+}
+
+/* search bar */
+#keyword {
+  height: 50px;
+  width: 200px;
+  border-radius: 10px;
+  border-color: #EFEFEF;
+  background-color: #272727;
+  padding: 10px;
+  margin-left:20px;
+  margin-right:20px;
+}
+
+/* fuzzy_search button */
+/*#fuzzy_search {
+  background-color: #272727;
+  border: none;
+}*/
+
+
+/*'Have a Try!', 'Rated Movies'*/
+#main-content h2 {
+    font-family: 'Montserrat', sans-serif;
+    color: #fff;
+}
+
+
+#main-content li{
+    list-style: none;
+    display: inline-block;
+    text-align: center;
+    overflow: hidden;
+    vertical-align: bottom;
+    margin: 15px;
+    text-aligh: center;
+}
+
+.figure_title > a {     /* movie title link */
+    display: block;
+    font-family: 'Bellefair', serif;
+    font-size: 20px;
+    color: #fff;
+    text-decoration: none;
+}
+
+
+@media (max-width: 1270px) {
+  .navbar-header {
+      float: none;
+  }
+  .navbar-left,.navbar-right {
+      float: none !important;
+  }
+  .navbar-toggle {
+      display: block;
+  }
+  .navbar-collapse {
+      border-top: 1px solid transparent;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .navbar-fixed-top {
+      top: 0;
+      border-width: 0 0 1px;
+  }
+  .navbar-collapse.collapse {
+      display: none!important;
+  }
+  .navbar-nav {
+      float: none!important;
+      margin-top: 7.5px;
+  }
+  .navbar-nav>li {
+      float: none;
+  }
+  .navbar-nav>li>a {
+      padding-top: 10px;
+      padding-bottom: 10px;
+  }
+  .collapse.in{
+      display:block !important;
+  }
+}
+
+@media (max-width: 690px) {
+  /* Header */
+  .navbar-brand h1 { /* Restaurant name */
+    font-size: 3.6vw;
+  }
+  /* End Header */
+
+
+}

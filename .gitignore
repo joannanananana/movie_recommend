@@ -1,0 +1,9 @@
+/data
+/img
+/.idea
+/movierecommend/.idea
+/movierecommend/users/static/img
+/movierecommend/users/static/*.csv
+/movierecommend/node_modules
+**/__pycache__
+**/.DS_Store
